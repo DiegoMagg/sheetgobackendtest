@@ -5,9 +5,11 @@ name = "pypi"
 
 [packages]
 Flask = "*"
-flake8 = "*"
+pyjwt = "*"
 
 [dev-packages]
+flake8 = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.8"
