@@ -6,12 +6,23 @@ from app import application
 from db import db
 import jwt
 
+
+environ['DATABASE'] = 'test.sqlite'
 application.config['TESTING'] = True
 application.config['DEBUG'] = False
 application.config.from_mapping(
     SECRET_KEY=environ.get('SEC_KEY', 'dev'),
-    DATABASE=path.join(BASE_DIR, 'test.sqlite'),
+    DATABASE=path.join(BASE_DIR, environ.get('DATABASE')),
 )
+
+
+class CommandsTesCase(unittest.TestCase):
+
+    def setUp(self):
+        self.runner = application.test_cli_runner()
+
+    def test_init_db(self):
+        self.assertTrue('Initialized the database' in self.runner.invoke(db.init_db_command).output)
 
 
 class SQLTestCase(unittest.TestCase):
@@ -22,12 +33,12 @@ class SQLTestCase(unittest.TestCase):
     def test_user_must_be_created(self):
         with application.app_context():
             self.db = db.init_db()
-            conn = sqlite3.connect(application.config['DATABASE'])
+            conn = sqlite3.connect(environ['DATABASE'])
             conn.execute('INSERT INTO user (email) VALUES (?)', (self.email,))
             conn.commit()
             self.assertTrue(self.email in conn.execute('SELECT * FROM user').fetchone())
             db.close_db()
-            remove(application.config['DATABASE'])
+            remove(environ['DATABASE'])
 
 
 class ViewsTests(unittest.TestCase):
@@ -61,15 +72,17 @@ class APITests(unittest.TestCase):
 
     def test_api_must_return_200_with_a_valid_token(self):
         with application.app_context():
+            data = {'file': open(BASE_DIR+'/sample.xlsx', 'rb')}
             db.init_db()
-            conn = sqlite3.connect(application.config['DATABASE'])
+            conn = sqlite3.connect(environ.get('DATABASE'))
             conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
             conn.commit()
-            breakpoint()
             token = jwt.encode(self.data, environ.get('SEC_KEY', ''), algorithm='HS256')
             response = self.test.post(
                 '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
+                content_type='multipart/form-data', data=data
             )
+            data['file'].close()
             self.assertEqual(response.status_code, 200)
 
 
