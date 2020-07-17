@@ -7,10 +7,9 @@ from settings import BASE_DIR
 application = Flask(__name__)
 application.config.from_mapping(
     SECRET_KEY=environ.get('SEC_KEY', 'dev'),
-    DATABASE=path.join(BASE_DIR, 'xlsproject.sqlite'),
+    DATABASE=path.join(BASE_DIR, environ.get('DATABASE')),
 )
 application.add_url_rule('/api/excel/info/', view_func=XLSApi.as_view('excel_info'))
-application.teardown_appcontext
 db.init(application)
 
 
