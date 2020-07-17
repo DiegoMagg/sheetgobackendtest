@@ -6,8 +6,11 @@ __pycache__/
 instance/
 test.sqlite
 
+#tests
 .pytest_cache/
 .coverage
+.coveragerc
+coverage_run.sh
 htmlcov/
 
 dist/

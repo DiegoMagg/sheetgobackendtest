@@ -5,6 +5,7 @@ from os import environ, path, remove
 from app import application
 from db import db
 import jwt
+import openpyxl
 
 
 environ['DATABASE'] = 'test.sqlite'
@@ -51,11 +52,17 @@ class ViewsTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class APITests(unittest.TestCase):
+class XLSXAPITests(unittest.TestCase):
 
     def setUp(self):
         self.test = application.test_client()
         self.data = {'email': 'user@provider.com'}
+        with application.app_context():
+            self.xlsx_data = {'file': open(BASE_DIR+'/sample.xlsx', 'rb')}
+            db.init_db()
+            conn = sqlite3.connect(environ.get('DATABASE'))
+            conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
+            conn.commit()
 
     def test_api_must_return_403_without_authentication_header(self):
         response = self.test.post('/api/excel/info/')
@@ -71,19 +78,21 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
 
     def test_api_must_return_200_with_a_valid_token(self):
-        with application.app_context():
-            data = {'file': open(BASE_DIR+'/sample.xlsx', 'rb')}
-            db.init_db()
-            conn = sqlite3.connect(environ.get('DATABASE'))
-            conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
-            conn.commit()
-            token = jwt.encode(self.data, environ.get('SEC_KEY', ''), algorithm='HS256')
-            response = self.test.post(
-                '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
-                content_type='multipart/form-data', data=data
-            )
-            data['file'].close()
-            self.assertEqual(response.status_code, 200)
+        token = jwt.encode(self.data, environ.get('SEC_KEY', ''), algorithm='HS256')
+        sample = list((openpyxl.load_workbook(BASE_DIR+'/sample.xlsx').active).values)
+        sample.pop(0)
+        response = self.test.post(
+            '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
+            content_type='multipart/form-data', data=self.xlsx_data,
+        )
+        self.assertTrue('Dulce' in sample[0])
+        self.assertFalse('Dulce' in response.json['rows'][0])
+        self.assertTrue('Angel' in response.json['rows'][0])
+        self.assertEqual(response.status_code, 200)
+
+    def tearDown(self):
+        self.xlsx_data['file'].close()
+        remove(environ['DATABASE'])
 
 
 if __name__ == "__main__":

@@ -17,9 +17,9 @@ class XLSApi(MethodView):
 
     def parse_xls(self):
         json = {}
-        ws = list((openpyxl.load_workbook(request.files['file']).active).values)
+        ws = list(openpyxl.load_workbook(request.files['file']).active.values)
         json['columns'] = ws.pop(0)
-        json['lines'] = sorted(ws, key=lambda i: i[1])
+        json['rows'] = sorted(ws, key=lambda i: i[1])
         return json
 
 
