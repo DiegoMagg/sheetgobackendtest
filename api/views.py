@@ -1,9 +1,11 @@
 from flask.views import MethodView
-from os import environ
+from re import sub
+from os import environ, remove
 import jwt
 import sqlite3
 import openpyxl
-from flask import request, jsonify, Response  # noqa
+from PIL import Image
+from flask import request, jsonify, Response, send_file  # noqa
 from settings import BASE_DIR
 
 
@@ -21,6 +23,27 @@ class XLSApi(MethodView):
         json['columns'] = ws.pop(0)
         json['rows'] = sorted(ws, key=lambda i: i[1])
         return json
+
+
+class ImageConversionApi(MethodView):
+    accepted_formats = ('png', 'jpeg')
+    converted_files_path = f'{BASE_DIR}/static/images/converted/'
+
+    def post(self):
+        authenticated, data = auth()
+        if not authenticated:
+            return jsonify({'detail': data}), 403
+        return self.handle_image()
+
+    def handle_image(self):
+        param = request.form.to_dict().get('format')
+        if not param or param not in self.accepted_formats:
+            return jsonify({'detail': 'unsupported format or format is missing.'}), 400
+        filepath = self.converted_files_path + sub(r'\.\w+', f'.{param}', request.files['file'].filename)
+        Image.open(request.files['file']).convert('RGB').save(filepath)
+        response = send_file(filepath, attachment_filename=filepath.split('/')[-1])
+        remove(filepath)
+        return response
 
 
 def auth():
