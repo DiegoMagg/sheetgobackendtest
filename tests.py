@@ -6,10 +6,11 @@ from app import application
 from db import db
 import jwt
 import openpyxl
-import tracemalloc
 
-tracemalloc.start()
 
+DROPBOX_TEST_REQUIRED_PARAMS = all(
+    [environ.get('DROPBOX_TOKEN'), environ.get('DROPBOX_PATH'), environ.get('DROPBOX_INVALID_FILE_PATH')],
+)
 
 environ['DATABASE'] = 'test.sqlite'
 application.config['TESTING'] = True
@@ -36,7 +37,7 @@ class SQLTestCase(unittest.TestCase):
 
     def test_user_must_be_created(self):
         with application.app_context():
-            self.db = db.init_db()
+            db.init_db()
             conn = sqlite3.connect(environ['DATABASE'])
             conn.execute('INSERT INTO user (email) VALUES (?)', (self.email,))
             conn.commit()
@@ -80,7 +81,7 @@ class XLSXAPITests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
 
-    def test_api_must_return_200_with_a_valid_token(self):
+    def test_api_must_return_xmls_rows_alphabetically_ordered(self):
         token = jwt.encode(self.data, environ.get('SEC_KEY', ''), algorithm='HS256')
         sample = list((openpyxl.load_workbook('sample.xlsx').active).values)
         sample.pop(0)
@@ -88,10 +89,10 @@ class XLSXAPITests(unittest.TestCase):
             '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
             content_type='multipart/form-data', data=self.xlsx_data,
         )
+        self.assertEqual(response.status_code, 200)
         self.assertTrue('Dulce' in sample[0])
         self.assertFalse('Dulce' in response.json['rows'][0])
         self.assertTrue('Angel' in response.json['rows'][0])
-        self.assertEqual(response.status_code, 200)
 
     def tearDown(self):
         self.xlsx_data['file'].close()
@@ -123,7 +124,7 @@ class ImageApiTests(unittest.TestCase):
             content_type='multipart/form-data', data=self.params,
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json, {'detail': 'unsupported format or format is missing.'})
+        self.assertEqual(response.json, {'detail': 'Unsupported format or format is missing.'})
 
     def test_image_must_be_converted_to_png(self):
         response = self.test.post(
@@ -134,9 +135,113 @@ class ImageApiTests(unittest.TestCase):
         self.assertEqual(response.headers.get('Content-Type'), 'image/png')
         response.close()
 
+    def test_image_must_be_converted_to_jpeg(self):
+        self.params['format'] = 'jpeg'
+        response = self.test.post(
+            '/api/image/convert/', headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='multipart/form-data', data=self.params,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Content-Type'), 'image/jpeg')
+        response.close()
+
     def tearDown(self):
         self.params['file'].close()
         system(f'rm -rf {BASE_DIR + "/static/images/converted/*"}')
+
+
+class DropboxImageConverterApiTests(unittest.TestCase):
+    test = 'DROPBOX_TOKEN or DROPBOX_TOKEN environment variables not found'
+
+    def setUp(self):
+        self.test = application.test_client()
+        self.data = {'email': 'user@provider.com'}
+        self.token = jwt.encode(self.data, environ.get('SEC_KEY', ''), algorithm='HS256')
+        self.json = {
+            'format': 'png', 'dropbox_token': environ.get('DROPBOX_TOKEN'),
+            'path': environ.get('DROPBOX_PATH'),
+        }
+        with application.app_context():
+            db.init_db()
+            conn = sqlite3.connect(environ.get('DATABASE'))
+            conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
+            conn.commit()
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_dropbox_api_must_return_403_with_invalid_credentials(self):
+        self.token = jwt.encode(self.data, 'TESTSECRET', algorithm='HS256')
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Unsupported format or format is missing.')
+    def test_dropbox_api_must_return_400_if_format_param_is_missing(self):
+        self.json.pop('format')
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {'detail': 'Unsupported format or format is missing.'})
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_dropbox_api_must_return_400_if_dropbox_token_is_missing(self):
+        self.json.pop('dropbox_token')
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {'detail': 'dropbox token is missing.'})
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_dropbox_api_must_return_400_if_file_path_is_missing(self):
+        self.json.pop('path')
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {'detail': 'dropbox file path is missing.'})
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_image_from_dropbox_must_be_converted_to_png(self):
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('Content-Type'), 'image/png')
+        response.close()
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_dropbox_api_must_return_400_if_file_does_not_exists(self):
+        self.json['path'] = '/test/inexistant.file'
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {'error': 'Check dropbox token or file path.'})
+
+    @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
+    def test_dropbox_api_must_return_400_if_file_is_invalid(self):
+        self.json['path'] = environ.get('DROPBOX_INVALID_FILE_PATH')
+        response = self.test.post(
+            '/api/image/convert/fromdropbox/',
+            headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
+            content_type='application/json', json=self.json,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {'detail': 'Invalid file.'})
 
 
 if __name__ == "__main__":
