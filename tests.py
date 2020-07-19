@@ -8,10 +8,6 @@ import jwt
 import openpyxl
 
 
-DROPBOX_TEST_REQUIRED_PARAMS = all(
-    [environ.get('DROPBOX_TOKEN'), environ.get('DROPBOX_PATH'), environ.get('DROPBOX_INVALID_FILE_PATH')],
-)
-
 environ['DATABASE'] = 'test.sqlite'
 application.config['TESTING'] = True
 application.config['DEBUG'] = False
@@ -20,8 +16,12 @@ application.config.from_mapping(
     DATABASE=path.join(BASE_DIR, environ.get('DATABASE')),
 )
 
+DROPBOX_TEST_REQUIRED_PARAMS = all(
+    [environ.get('DROPBOX_TOKEN'), environ.get('DROPBOX_PATH'), environ.get('DROPBOX_INVALID_FILE_PATH')],
+)
 
-class CommandsTesCase(unittest.TestCase):
+
+class CommandsTestCase(unittest.TestCase):
 
     def setUp(self):
         self.runner = application.test_cli_runner()
@@ -46,7 +46,7 @@ class SQLTestCase(unittest.TestCase):
             remove(environ['DATABASE'])
 
 
-class ViewsTests(unittest.TestCase):
+class FrontPageTestCase(unittest.TestCase):
 
     def setUp(self):
         self.test = application.test_client()
@@ -56,7 +56,7 @@ class ViewsTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class XLSXAPITests(unittest.TestCase):
+class XLSXAPITestCase(unittest.TestCase):
 
     def setUp(self):
         self.test = application.test_client()
@@ -99,7 +99,7 @@ class XLSXAPITests(unittest.TestCase):
         remove(environ['DATABASE'])
 
 
-class ImageApiTests(unittest.TestCase):
+class ImageApiTestCase(unittest.TestCase):
 
     def setUp(self):
         self.test = application.test_client()
@@ -150,7 +150,7 @@ class ImageApiTests(unittest.TestCase):
         system(f'rm -rf {BASE_DIR + "/static/images/converted/*"}')
 
 
-class DropboxImageConverterApiTests(unittest.TestCase):
+class DropboxImageConverterApiTestCase(unittest.TestCase):
     test = 'DROPBOX_TOKEN or DROPBOX_TOKEN environment variables not found'
 
     def setUp(self):
