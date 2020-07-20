@@ -1,5 +1,8 @@
 [run]
 source = .
+omit=
+    */generate_jwt.py
+
 
 [report]
 show_missing = true
