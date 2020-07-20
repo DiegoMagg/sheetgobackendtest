@@ -28,17 +28,17 @@ Excel info:
 
 Image conversion:
 
-    $ curl http://localhost:5000/api/image/convert/ -H "Authorization: Bearer $(pipenv run python3 generate_jwt.py <YOUR_EMAIL>)" -F file=@sheetgo.bmp --form format=<jpg or png> --output "<filename.SELECTED_FORMAT>"
+    $ curl http://localhost:5000/api/image/convert/ -H "Authorization: Bearer $(pipenv run python3 generate_jwt.py <YOUR_EMAIL>)" -F file=@sheetgo.bmp --form format=<jpeg or png> --output "<filename.SELECTED_FORMAT>"
 
 Dropbox image conversion:
 
     $ curl http://localhost:5000/api/convert/fromdropbox/ \
-      -H "authorization: Bearer $(pipenv run python3 generate_jwt.py <YOUR_EMAIL>)" \
-      -H "content-type: application/json" \
-      -d '{
-    	"format": "<jpeg or png>",
-    	"dropbox_token": "<DROPBOX_TOKEN>",
-    	"path": "<DROPBOX_PATH>"
+    -H "Authorization: Bearer $(pipenv run python3 generate_jwt.py <YOUR_EMAIL>)" \
+    -H "content-type: application/json" \
+    --data '{
+        "format": "<jpeg or png>",
+        "dropbox_token": "<DROPBOX_TOKEN>",
+        "path": "<DROPBOX_PATH>"
     }' \
     --output "<FILENAME.SELECTED_FORMAT>"
 
@@ -53,8 +53,8 @@ With coverage report:
 
 **Note: To test the dropbox conversion api, it's necessary to set the dropbox environment variables in the .env file or these tests will be skipped.**
 
-DROPBOX_PATH="/path/to/image.bmp"
-DROPBOX_INVALID_FILE_PATH="/path/to/non-image.xlsx"
+- DROPBOX_PATH="/path/to/image.bmp"
+- DROPBOX_INVALID_FILE_PATH="/path/to/non-image.xlsx"
 
 #### File Samples
 
