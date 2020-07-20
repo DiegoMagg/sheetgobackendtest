@@ -5,7 +5,7 @@ __pycache__/
 
 instance/
 test.sqlite
-xlsxproject.sqlite
+xlsproject.sqlite
 
 #tests
 .pytest_cache/

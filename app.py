@@ -13,7 +13,7 @@ application.config.from_mapping(
 application.add_url_rule('/api/excel/info/', view_func=XLSApi.as_view('excel_info'))
 application.add_url_rule('/api/image/convert/', view_func=ImageConversionApi.as_view('image_conversion'))
 application.add_url_rule(
-    '/api/image/convert/fromdropbox/', view_func=DropboxImageConversionApi.as_view('dropbox_conversion'),
+    '/api/convert/fromdropbox/', view_func=DropboxImageConversionApi.as_view('dropbox_conversion'),
 )
 db.init(application)
 user_manager.init(application)

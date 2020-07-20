@@ -30,6 +30,7 @@ class CommandsTestCase(unittest.TestCase):
     def test_init_db(self):
         self.assertTrue('Initialized the database' in self.runner.invoke(db.init_db_command).output)
 
+    @unittest.skipIf(not environ.get('SEC_KEY'), 'Missing JWT secret')
     def test_jwt_generator_must_return_error_with_blank_or_invalid_email(self):
         output = subprocess.run(['python', 'generate_jwt.py'], capture_output=True).stderr.decode('UTF-8')
         self.assertTrue('Blank or invalid email' in output)
@@ -38,6 +39,7 @@ class CommandsTestCase(unittest.TestCase):
         ).stderr.decode('UTF-8')
         self.assertTrue('Blank or invalid email' in output)
 
+    @unittest.skipIf(not environ.get('SEC_KEY'), 'Missing JWT secret')
     def test_generate_jwt_must_return_token_with_valid_email(self):
         output = subprocess.run(
             ['python', 'generate_jwt.py', 'valid@email.com'], capture_output=True,
@@ -187,7 +189,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_403_with_invalid_credentials(self):
         self.token = jwt.encode(self.data, 'TESTSECRET', algorithm='HS256')
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
         )
         self.assertEqual(response.status_code, 403)
@@ -197,7 +199,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_400_if_format_param_is_missing(self):
         self.json.pop('format')
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
@@ -208,7 +210,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_400_if_dropbox_token_is_missing(self):
         self.json.pop('dropbox_token')
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
@@ -219,7 +221,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_400_if_file_path_is_missing(self):
         self.json.pop('path')
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
@@ -229,7 +231,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
     def test_image_from_dropbox_must_be_converted_to_png(self):
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
@@ -241,7 +243,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_400_if_file_does_not_exists(self):
         self.json['path'] = '/test/inexistant.file'
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
@@ -252,7 +254,7 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
     def test_dropbox_api_must_return_400_if_file_is_invalid(self):
         self.json['path'] = environ.get('DROPBOX_INVALID_FILE_PATH')
         response = self.test.post(
-            '/api/image/convert/fromdropbox/',
+            '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
             content_type='application/json', json=self.json,
         )
