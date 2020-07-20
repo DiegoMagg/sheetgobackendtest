@@ -13,8 +13,7 @@ requirements:
 
     $ git clone git@github.com:DiegoMagg/sheetgobackendtest.git .
     $ pipenv install
-    $ mkdir -p -v static/images/converted && mkdir -p -v static/images/dropbox
-
+    $ pipenv run flask init-db && pipenv run flask create-user <YOUR_EMAIL>
 
 
 ### Starting application and CURL testing:
