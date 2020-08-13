@@ -1,6 +1,7 @@
 # Sheetgo Backend Test
 
-This repository was created in order to answer a test proposed to me by [Sheetgo](https://www.sheetgo.com/).
+[![Build Status](https://travis-ci.com/DiegoMagg/sheetgobackendtest.svg?branch=master)](https://travis-ci.com/github/DiegoMagg/sheetgobackendtest)
+[![codecov](https://codecov.io/gh/DiegoMagg/sheetgobackendtest/branch/master/graph/badge.svg)](https://codecov.io/gh/DiegoMagg/sheetgobackendtest)
 
 requirements:
 
