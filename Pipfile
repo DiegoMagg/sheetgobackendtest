@@ -9,6 +9,7 @@ pyjwt = "*"
 openpyxl = "*"
 pillow = "*"
 requests = "*"
+codecov = "*"
 
 [dev-packages]
 flake8 = "*"
