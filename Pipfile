@@ -8,6 +8,7 @@ Flask = "*"
 pyjwt = "*"
 openpyxl = "*"
 pillow = "*"
+requests = "*"
 
 [dev-packages]
 flake8 = "*"
