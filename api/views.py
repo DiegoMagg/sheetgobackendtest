@@ -25,9 +25,6 @@ class ImageConversionApi(MethodView):
 
     @authenticate
     def post(self):
-        return self.handle_image()
-
-    def handle_image(self):
         param = request.form.to_dict().get('format')
         if not param or param.lower() not in ACCEPTED_FORMATS:
             return {'detail': 'Unsupported format or format is missing.'}, 400
@@ -42,9 +39,6 @@ class DropboxImageConversionApi(MethodView):
 
     @authenticate
     def post(self):
-        return self.handle_request()
-
-    def handle_request(self):
         request_is_valid, json = self.validate_request()
         if not request_is_valid:
             return json, 400
