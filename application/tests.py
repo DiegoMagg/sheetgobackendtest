@@ -86,17 +86,25 @@ class XLSXAPITestCase(unittest.TestCase):
             conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
             conn.commit()
 
-    def test_api_must_return_403_without_authentication_header(self):
+    def test_api_must_return_401_without_authentication_header(self):
         response = self.test.post('/api/excel/info/')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json, {'detail': 'Authentication credentials were not provided.'})
 
-    def test_api_must_return_403_with_invalid_credentials(self):
+    def test_api_must_return_401_with_invalid_credentials(self):
         token = jwt.encode(self.data, 'TESTSECRET', algorithm='HS256')
         response = self.test.post(
             '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
+
+    def test_api_must_return_401_when_user_not_exists(self):
+        token = jwt.encode({'email': 'otheruser@provider.com'}, environ.get('SEC_KEY', ''), algorithm='HS256')
+        response = self.test.post(
+            '/api/excel/info/', headers={'Authorization': f'Bearer {token.decode("UTF-8")}'},
+        )
+        self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
 
     def test_api_must_return_xmls_rows_alphabetically_ordered(self):
@@ -130,9 +138,9 @@ class ImageApiTestCase(unittest.TestCase):
             conn.execute('INSERT INTO user (email) VALUES (?)', (self.data['email'],))
             conn.commit()
 
-    def test_image_api_must_return_403_without_authentication_header(self):
+    def test_image_api_must_return_401_without_authentication_header(self):
         response = self.test.post('/api/image/convert/')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json, {'detail': 'Authentication credentials were not provided.'})
 
     def test_image_api_must_return_400_if_format_param_is_missing(self):
@@ -186,13 +194,13 @@ class DropboxImageConverterApiTestCase(unittest.TestCase):
             conn.commit()
 
     @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Missing dropbox environment variables')
-    def test_dropbox_api_must_return_403_with_invalid_credentials(self):
+    def test_dropbox_api_must_return_401_with_invalid_credentials(self):
         self.token = jwt.encode(self.data, 'TESTSECRET', algorithm='HS256')
         response = self.test.post(
             '/api/convert/fromdropbox/',
             headers={'Authorization': f'Bearer {self.token.decode("UTF-8")}'},
         )
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json, {'detail': 'Invalid credentials.'})
 
     @unittest.skipIf(not DROPBOX_TEST_REQUIRED_PARAMS, 'Unsupported format or format is missing.')
