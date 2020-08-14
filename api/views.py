@@ -1,26 +1,19 @@
 from re import sub
 import requests
-from os import environ
 from json import dumps, loads
-import jwt
-import sqlite3
 import openpyxl
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 from flask import request, send_file, abort  # noqa
 from flask.views import MethodView
-from settings import BASE_DIR, CONVERTED_FILES_PATH, ACCEPTED_FORMATS, DROPBOX_CONVERTED_FILES_PATH
+from common.auth import authenticate
+from settings import CONVERTED_FILES_PATH, ACCEPTED_FORMATS, DROPBOX_CONVERTED_FILES_PATH
 
 
 class XLSApi(MethodView):
 
+    @authenticate
     def post(self):
-        authenticated, data = auth()
-        if not authenticated:
-            return {'detail': data}, 403
-        return self.parse_xls()
-
-    def parse_xls(self):
         json = {}
         ws = list(openpyxl.load_workbook(request.files['file']).active.values)
         json['columns'] = ws.pop(0)
@@ -30,10 +23,8 @@ class XLSApi(MethodView):
 
 class ImageConversionApi(MethodView):
 
+    @authenticate
     def post(self):
-        authenticated, data = auth()
-        if not authenticated:
-            return {'detail': data}, 403
         return self.handle_image()
 
     def handle_image(self):
@@ -49,10 +40,8 @@ class ImageConversionApi(MethodView):
 class DropboxImageConversionApi(MethodView):
     url = "https://content.dropboxapi.com/2/files/download"
 
+    @authenticate
     def post(self):
-        authenticated, data = auth()
-        if not authenticated:
-            return {'detail': data}, 403
         return self.handle_request()
 
     def handle_request(self):
@@ -88,19 +77,3 @@ class DropboxImageConversionApi(MethodView):
             return send_file(filepath, attachment_filename=filepath.split('/')[-1])
         except UnidentifiedImageError:
             return {'detail': 'Invalid file.'}, 400
-
-
-def auth():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return False, 'Authentication credentials were not provided.'
-    try:
-        data = jwt.decode(auth_header.split()[1], environ.get('SEC_KEY'), algorithms=['HS256'])
-        conn = sqlite3.connect(f'{BASE_DIR}/{environ.get("DATABASE")}')
-        user = conn.execute(
-            'SELECT * FROM user WHERE email=(?)', (data.get('email', ''),),
-        ).fetchone()
-        conn.close()
-        return (True, '') if user else (False, 'Invalid credentials')
-    except (jwt.exceptions.DecodeError, jwt.exceptions.InvalidSignatureError):
-        return False, 'Invalid credentials.'
